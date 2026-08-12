@@ -77,6 +77,30 @@
   ::placeholder { color: #9A8F72; }
 
   .ruled-row:nth-child(odd) { background: rgba(216,207,186,0.28); }
+
+  .task-toggle-btn.active { background: #C89B3C; color: #14161B; }
+  .word-count-ok { color: #3f8a4c !important; }
+
+  .rec-dot { box-shadow: 0 0 0 0 rgba(196,60,60,0.6); }
+  .rec-dot.recording { animation: recpulse 1.2s ease-out infinite; background: #C4453C !important; }
+  @keyframes recpulse {
+    0%   { box-shadow: 0 0 0 0 rgba(196,60,60,0.55); }
+    70%  { box-shadow: 0 0 0 9px rgba(196,60,60,0); }
+    100% { box-shadow: 0 0 0 0 rgba(196,60,60,0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rec-dot.recording { animation: none; }
+  }
+
+  audio.rec-audio { max-width: 100%; height: 32px; }
+
+  /* ---------- Mobile tuning ---------- */
+  @media (max-width: 767px) {
+    body { font-size: 15px; }
+    #folderLabel, #gdriveLabel { max-width: 34vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+    .answer-input, textarea { font-size: 16px; } /* prevents iOS auto-zoom on focus */
+    #trackGrid { max-height: 5.5rem; }
+  }
 </style>
 </head>
 <body class="h-full text-ink-900">
@@ -109,7 +133,7 @@
     </select>
 
     <select id="audioSelect" class="text-xs font-medium bg-ink-700 border border-ink-600 text-paper rounded px-3 py-2 min-w-[160px] max-w-[210px] focus:ring-2 focus:ring-brass">
-      <option value="">Audio override (.mp3/.wav)</option>
+      <option value="">Audio override (mp3/wav/m4a/wma)</option>
     </select>
 
     <select id="moduleSelect" class="text-xs font-medium bg-ink-700 border border-ink-600 text-paper rounded px-3 py-2 focus:ring-2 focus:ring-brass">
@@ -132,15 +156,18 @@
   </header>
 
   <!-- ===================== MAIN SPLIT ===================== -->
-  <main class="flex-1 flex min-h-0">
+  <main class="flex-1 flex flex-col md:flex-row min-h-0 overflow-y-auto md:overflow-hidden">
 
-    <!-- LEFT: PDF VIEWER 55% -->
-    <section class="basis-[55%] shrink-0 grow-0 min-w-0 bg-ink-900 flex flex-col border-r border-ink-600/60">
-      <div class="shrink-0 flex items-center justify-between px-4 py-2 bg-ink-800 border-b border-ink-600/60">
-        <span class="text-[11px] uppercase tracking-[0.15em] text-brass font-mono">Reading Pane</span>
-        <span id="currentBookLabel" class="text-xs text-paper/70 font-mono truncate max-w-[60%]">No book loaded</span>
+    <!-- LEFT: PDF VIEWER (55% on desktop, top half on mobile) -->
+    <section class="basis-auto md:basis-[55%] shrink-0 grow-0 min-w-0 bg-ink-900 flex flex-col border-b md:border-b-0 border-r-0 md:border-r border-ink-600/60 h-[44vh] md:h-auto">
+      <div class="shrink-0 flex items-center justify-between px-3 md:px-4 py-2 bg-ink-800 border-b border-ink-600/60 gap-2">
+        <span class="text-[11px] uppercase tracking-[0.15em] text-brass font-mono shrink-0">Reading Pane</span>
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="currentBookLabel" class="text-xs text-paper/70 font-mono truncate max-w-[38vw] md:max-w-[220px]">No book loaded</span>
+          <a id="openPdfNewTab" href="#" target="_blank" rel="noopener" class="hidden shrink-0 text-[10px] font-mono px-2 py-1 rounded border border-ink-600 text-brass hover:bg-ink-600 whitespace-nowrap">Open ↗</a>
+        </div>
       </div>
-      <div class="flex-1 min-h-0 bg-[#3a3d44]">
+      <div class="flex-1 min-h-0 bg-[#3a3d44] relative">
         <iframe id="pdfFrame" class="w-full h-full bg-[#3a3d44]" title="PDF viewer"></iframe>
         <div id="pdfEmptyState" class="h-full w-full flex flex-col items-center justify-center text-center px-8 -mt-full">
           <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" stroke-width="1.5" class="mb-3 opacity-70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
@@ -149,8 +176,8 @@
       </div>
     </section>
 
-    <!-- RIGHT: AUDIO + ANSWER SHEET 45% -->
-    <section class="basis-[45%] grow min-w-0 flex flex-col min-h-0 bg-ink-900">
+    <!-- RIGHT: MODULE WORKSPACE (45% on desktop, bottom on mobile) -->
+    <section class="basis-auto md:basis-[45%] grow min-w-0 flex flex-col min-h-0 bg-ink-900">
 
       <!-- AUDIO PLAYER (Listening module only) -->
       <div id="audioSection" class="shrink-0 bg-ink-800 border-b border-ink-600/60 px-4 py-3 hidden">
@@ -196,13 +223,14 @@
         <audio id="audioEl" class="hidden" preload="metadata"></audio>
       </div>
 
-      <div id="audioHiddenNote" class="shrink-0 bg-ink-800 border-b border-ink-600/60 px-4 py-3 flex items-center gap-2">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
-        <span class="text-[11px] text-paper/50 font-mono">Audio deck is only shown for the Listening module — select it above to reveal playback controls.</span>
+      <!-- PLACEHOLDER — shown until both Module and Test are selected -->
+      <div id="rightPlaceholder" class="flex-1 min-h-0 flex flex-col items-center justify-center text-center px-8">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" stroke-width="1.5" class="mb-3 opacity-70"><path d="M9 11H1l8-8 8 8h-8v10H9z"/></svg>
+        <p class="text-paper/60 text-sm font-body max-w-xs">Choose a <span class="text-brass">Module</span> and <span class="text-brass">Test</span> number above to open the answer sheet, recorder, or writing pad.</p>
       </div>
 
-      <!-- ANSWER SHEET -->
-      <div class="flex-1 min-h-0 flex flex-col p-3">
+      <!-- ANSWER SHEET (Listening / Reading) -->
+      <div id="answerSheetSection" class="hidden flex-1 min-h-0 flex flex-col p-3">
         <div class="bg-paper rounded-sm shadow-[0_1px_0_#00000033,0_8px_20px_-8px_#00000066] flex-1 min-h-0 flex flex-col overflow-hidden">
           <div class="shrink-0 border-b-[3px] border-ink-900 px-4 pt-3 pb-2.5 flex items-start justify-between">
             <div>
@@ -219,6 +247,53 @@
             <div class="grid grid-cols-2 gap-x-4">
               <div id="answerCol1"></div>
               <div id="answerCol2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SPEAKING (3 parts: record + playback) -->
+      <div id="speakingSection" class="hidden flex-1 min-h-0 flex flex-col p-3 gap-2.5 overflow-y-auto">
+        <div class="shrink-0 bg-paper rounded-sm shadow-[0_1px_0_#00000033,0_8px_20px_-8px_#00000066] px-4 pt-3 pb-2.5">
+          <div class="text-[10px] uppercase tracking-[0.2em] text-brass-dark font-mono">Speaking Test</div>
+          <div id="speakingMetaLabel" class="font-display font-700 text-ink-900 text-base leading-tight mt-0.5">Module: — &nbsp;·&nbsp; Test: —</div>
+          <div class="text-[11px] text-ink-900/50 font-body mt-1">Record each part, then play it back to review pace, clarity and timing.</div>
+        </div>
+        <div id="speakingParts" class="flex flex-col gap-2.5"></div>
+      </div>
+
+      <!-- WRITING (Task 1 / Task 2 toggle, question + answer + word counter) -->
+      <div id="writingSection" class="hidden flex-1 min-h-0 flex flex-col p-3 gap-2.5">
+        <div class="shrink-0 flex items-center gap-2 flex-wrap">
+          <div class="flex items-center gap-1 bg-ink-800 border border-ink-600 rounded p-1">
+            <button id="taskToggle1" data-task="1" class="task-toggle-btn active text-[11px] font-mono px-3 py-1.5 rounded text-paper/80">Task 1</button>
+            <button id="taskToggle2" data-task="2" class="task-toggle-btn text-[11px] font-mono px-3 py-1.5 rounded text-paper/80">Task 2</button>
+          </div>
+          <div id="writingMetaLabel" class="text-[11px] text-paper/50 font-mono">Module: — &nbsp;·&nbsp; Test: —</div>
+          <button id="writingDownloadBtn" class="ml-auto text-[11px] font-mono px-2.5 py-1.5 rounded bg-brass text-ink-900 hover:bg-brass-light shrink-0">Download PDF</button>
+        </div>
+
+        <div class="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5">
+          <div id="task1Panel" class="task-panel flex flex-col gap-2">
+            <div class="bg-paper rounded-sm shadow-[0_1px_0_#00000033,0_8px_20px_-8px_#00000066] p-3.5 flex flex-col gap-2">
+              <div class="text-[10px] uppercase tracking-[0.2em] text-brass-dark font-mono">Task 1 Question <span class="text-ink-900/40 normal-case tracking-normal">(optional — included in your PDF)</span></div>
+              <textarea id="task1Question" rows="3" class="answer-input w-full bg-transparent border border-paper-line rounded text-xs font-body text-ink-900 p-2 resize-y" placeholder="Paste or type the Task 1 prompt here…"></textarea>
+              <div class="flex items-center justify-between mt-1">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-brass-dark font-mono">Your Answer</div>
+                <span id="task1WordCount" class="text-[11px] font-mono text-ink-900/50">0 / 150 words</span>
+              </div>
+              <textarea id="task1Answer" rows="12" class="answer-input w-full bg-transparent border border-paper-line rounded text-sm font-body text-ink-900 p-2 resize-y" placeholder="Write your Task 1 response here (at least 150 words)…"></textarea>
+            </div>
+          </div>
+          <div id="task2Panel" class="task-panel hidden flex flex-col gap-2">
+            <div class="bg-paper rounded-sm shadow-[0_1px_0_#00000033,0_8px_20px_-8px_#00000066] p-3.5 flex flex-col gap-2">
+              <div class="text-[10px] uppercase tracking-[0.2em] text-brass-dark font-mono">Task 2 Question <span class="text-ink-900/40 normal-case tracking-normal">(optional — included in your PDF)</span></div>
+              <textarea id="task2Question" rows="3" class="answer-input w-full bg-transparent border border-paper-line rounded text-xs font-body text-ink-900 p-2 resize-y" placeholder="Paste or type the Task 2 prompt here…"></textarea>
+              <div class="flex items-center justify-between mt-1">
+                <div class="text-[10px] uppercase tracking-[0.2em] text-brass-dark font-mono">Your Answer</div>
+                <span id="task2WordCount" class="text-[11px] font-mono text-ink-900/50">0 / 250 words</span>
+              </div>
+              <textarea id="task2Answer" rows="16" class="answer-input w-full bg-transparent border border-paper-line rounded text-sm font-body text-ink-900 p-2 resize-y" placeholder="Write your Task 2 response here (at least 250 words)…"></textarea>
             </div>
           </div>
         </div>
@@ -286,9 +361,14 @@
   const pdfFrame       = document.getElementById('pdfFrame');
   const pdfEmptyState  = document.getElementById('pdfEmptyState');
   const currentBookLabel = document.getElementById('currentBookLabel');
+  const openPdfNewTab  = document.getElementById('openPdfNewTab');
+
+  const rightPlaceholder  = document.getElementById('rightPlaceholder');
+  const answerSheetSection = document.getElementById('answerSheetSection');
+  const speakingSection   = document.getElementById('speakingSection');
+  const writingSection    = document.getElementById('writingSection');
 
   const audioSection      = document.getElementById('audioSection');
-  const audioHiddenNote   = document.getElementById('audioHiddenNote');
   const audioMatchNote   = document.getElementById('audioMatchNote');
   const cueDot            = document.getElementById('cueDot');
   const currentTrackLabel = document.getElementById('currentTrackLabel');
@@ -308,6 +388,22 @@
   const clearBtn       = document.getElementById('clearBtn');
   const downloadBtn    = document.getElementById('downloadBtn');
 
+  const speakingMetaLabel = document.getElementById('speakingMetaLabel');
+  const speakingParts     = document.getElementById('speakingParts');
+
+  const taskToggle1     = document.getElementById('taskToggle1');
+  const taskToggle2     = document.getElementById('taskToggle2');
+  const task1Panel      = document.getElementById('task1Panel');
+  const task2Panel      = document.getElementById('task2Panel');
+  const writingMetaLabel = document.getElementById('writingMetaLabel');
+  const writingDownloadBtn = document.getElementById('writingDownloadBtn');
+  const task1Question = document.getElementById('task1Question');
+  const task1Answer   = document.getElementById('task1Answer');
+  const task1WordCount = document.getElementById('task1WordCount');
+  const task2Question = document.getElementById('task2Question');
+  const task2Answer   = document.getElementById('task2Answer');
+  const task2WordCount = document.getElementById('task2WordCount');
+
   // ---------- Helpers ----------
   function extOf(name) {
     const m = /\.([a-z0-9]+)$/i.exec(name || '');
@@ -316,7 +412,7 @@
   function normalize(name) {
     return (name || '')
       .toLowerCase()
-      .replace(/\.(pdf|mp3|wav)$/i, '')
+      .replace(/\.(pdf|mp3|wav|m4a|wma)$/i, '')
       .replace(/[^a-z0-9]/g, '');
   }
   function dirOf(path) {
@@ -374,10 +470,10 @@
       const path = f.webkitRelativePath || f.name;
       if (ext === 'pdf') {
         books.push({ name: f.name, path, file: f, source: 'local' });
-      } else if (ext === 'mp3' || ext === 'wav') {
+      } else if (ext === 'mp3' || ext === 'wav' || ext === 'm4a' || ext === 'wma') {
         audios.push({ name: f.name, path, file: f, source: 'local' });
       }
-      // every other extension (.m4a, .ogg, .txt, etc.) is silently ignored
+      // every other extension (.ogg, .txt, etc.) is silently ignored
     }
     books.sort((a, b) => a.path.localeCompare(b.path));
     audios.sort((a, b) => a.path.localeCompare(b.path));
@@ -529,7 +625,7 @@
         const ext = extOf(item.name);
         if (ext === 'pdf') {
           books.push({ name: item.name, path, driveId: item.id, mimeType: item.mimeType, source: 'drive' });
-        } else if (ext === 'mp3' || ext === 'wav') {
+        } else if (ext === 'mp3' || ext === 'wav' || ext === 'm4a' || ext === 'wma') {
           audios.push({ name: item.name, path, driveId: item.id, mimeType: item.mimeType, source: 'drive' });
         }
         // every other extension is ignored, same as the local folder path
@@ -605,7 +701,7 @@
   }
 
   function populateAudioSelect() {
-    audioSelect.innerHTML = '<option value="">Audio override (.mp3/.wav)</option>' +
+    audioSelect.innerHTML = '<option value="">Audio override (mp3/wav/m4a/wma)</option>' +
       state.audios.map((a, i) => {
         const label = a.path.includes('/') ? a.path : a.name;
         const tag = a.source === 'drive' ? '  ☁' : '';
@@ -620,7 +716,7 @@
       return;
     }
     trackGrid.innerHTML = state.audios.map((a, i) => {
-      const short = a.name.replace(/\.(mp3|wav)$/i, '');
+      const short = a.name.replace(/\.(mp3|wav|m4a|wma)$/i, '');
       const tag = a.source === 'drive' ? ' ☁' : '';
       return `<button data-track="${i}" class="track-btn text-left text-[11px] font-mono px-2 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-paper/80 border border-ink-600 truncate ${i === state.audioIndex ? 'active' : ''}" title="${escapeHtml(a.path)}">${escapeHtml(short)}${tag}</button>`;
     }).join('');
@@ -679,8 +775,11 @@
     bookSelect.value = String(index);
 
     try {
-      pdfFrame.src = await getObjectUrl(book);
+      const objUrl = await getObjectUrl(book);
+      pdfFrame.src = objUrl;
       currentBookLabel.textContent = book.name;
+      openPdfNewTab.href = objUrl;
+      openPdfNewTab.classList.remove('hidden');
     } catch (err) {
       currentBookLabel.textContent = 'Failed to load';
       alert(err.message);
@@ -743,13 +842,38 @@
     loadAudio(parseInt(btn.dataset.track, 10));
   });
 
-  moduleSelect.addEventListener('change', () => { populateBookSelect(); updateSheetMeta(); updateAudioVisibility(); });
-  testSelect.addEventListener('change', () => { populateBookSelect(); updateSheetMeta(); });
+  moduleSelect.addEventListener('change', () => { populateBookSelect(); updateSheetMeta(); updateRightPanel(); });
+  testSelect.addEventListener('change', () => { populateBookSelect(); updateSheetMeta(); updateRightPanel(); });
 
-  function updateAudioVisibility() {
-    const show = moduleSelect.value === 'Listening';
-    audioSection.classList.toggle('hidden', !show);
-    audioHiddenNote.classList.toggle('hidden', show);
+  // Shows exactly one of: placeholder / audio deck / answer sheet / speaking / writing,
+  // based on which Module + Test are currently selected.
+  function updateRightPanel() {
+    const mod = moduleSelect.value;
+    const test = testSelect.value;
+
+    rightPlaceholder.classList.add('hidden');
+    audioSection.classList.add('hidden');
+    answerSheetSection.classList.add('hidden');
+    speakingSection.classList.add('hidden');
+    writingSection.classList.add('hidden');
+
+    if (!mod || !test) {
+      rightPlaceholder.classList.remove('hidden');
+      return;
+    }
+
+    if (mod === 'Listening') {
+      audioSection.classList.remove('hidden');
+      answerSheetSection.classList.remove('hidden');
+    } else if (mod === 'Reading') {
+      answerSheetSection.classList.remove('hidden');
+    } else if (mod === 'Speaking') {
+      speakingSection.classList.remove('hidden');
+      speakingMetaLabel.textContent = `Module: ${mod}  ·  Test: ${test}`;
+    } else if (mod === 'Writing') {
+      writingSection.classList.remove('hidden');
+      writingMetaLabel.textContent = `Module: ${mod}  ·  Test: ${test}`;
+    }
   }
 
   function updateSheetMeta() {
@@ -878,8 +1002,186 @@
     }).from(wrap).save().then(() => { root.innerHTML = ''; });
   });
 
+  // ---------- Speaking module (3 parts: record + playback) ----------
+  const SPEAKING_PARTS = [
+    { n: 1, title: 'Part 1 — Introduction & Interview', sub: '~4–5 minutes · general questions about yourself, home, work/study, interests' },
+    { n: 2, title: 'Part 2 — Long Turn (Cue Card)', sub: '~3–4 minutes · 1 min prep, then speak for up to 2 minutes' },
+    { n: 3, title: 'Part 3 — Two-way Discussion', sub: '~4–5 minutes · deeper discussion linked to the Part 2 topic' },
+  ];
+  const speakingState = {}; // { [n]: { stream, recorder, chunks, startedAt, timerId, url } }
+
+  function initSpeaking() {
+    speakingParts.innerHTML = SPEAKING_PARTS.map((p) => `
+      <div class="bg-paper rounded-sm shadow-[0_1px_0_#00000033,0_8px_20px_-8px_#00000066] p-3.5" data-part="${p.n}">
+        <div class="flex items-start justify-between gap-2 mb-2.5">
+          <div class="min-w-0">
+            <div class="font-display font-700 text-ink-900 text-sm leading-tight">${p.title}</div>
+            <div class="text-[11px] text-ink-900/50 font-mono mt-0.5">${p.sub}</div>
+          </div>
+          <span class="rec-status shrink-0 text-[10px] font-mono px-2 py-1 rounded bg-ink-900/5 text-ink-900/50 whitespace-nowrap">Not recorded</span>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button data-part="${p.n}" class="rec-btn flex items-center gap-1.5 text-[11px] font-mono px-3 py-2 rounded bg-ink-900 text-paper hover:bg-ink-800">
+            <span class="rec-dot w-2 h-2 rounded-full bg-ink-600"></span> Record
+          </button>
+          <span class="rec-timer font-mono text-xs text-ink-900/50 tabular-nums">0:00</span>
+          <audio class="rec-audio hidden" controls preload="metadata"></audio>
+        </div>
+      </div>
+    `).join('');
+
+    speakingParts.addEventListener('click', (e) => {
+      const btn = e.target.closest('.rec-btn');
+      if (!btn) return;
+      toggleRecording(parseInt(btn.dataset.part, 10));
+    });
+  }
+
+  async function toggleRecording(n) {
+    const card = speakingParts.querySelector(`[data-part="${n}"].bg-paper`);
+    const btn = card.querySelector('.rec-btn');
+    const dot = card.querySelector('.rec-dot');
+    const timerEl = card.querySelector('.rec-timer');
+    const statusEl2 = card.querySelector('.rec-status');
+    const audioEl2 = card.querySelector('.rec-audio');
+
+    let s = speakingState[n];
+
+    // Currently recording -> stop
+    if (s && s.recorder && s.recorder.state === 'recording') {
+      s.recorder.stop();
+      return;
+    }
+
+    // Not recording -> start
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert('Your browser does not support microphone recording.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = (ev) => { if (ev.data.size) chunks.push(ev.data); };
+      recorder.onstop = () => {
+        clearInterval(s.timerId);
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+        if (s.url) URL.revokeObjectURL(s.url);
+        s.url = URL.createObjectURL(blob);
+        audioEl2.src = s.url;
+        audioEl2.classList.remove('hidden');
+        dot.classList.remove('recording');
+        btn.innerHTML = '<span class="rec-dot w-2 h-2 rounded-full bg-ink-600"></span> Re-record';
+        const secs = Math.round((Date.now() - s.startedAt) / 1000);
+        statusEl2.textContent = `Recorded · ${formatTime(secs)}`;
+        statusEl2.classList.add('text-brass-dark');
+      };
+
+      s = speakingState[n] = { stream, recorder, chunks, startedAt: Date.now(), timerId: null, url: s ? s.url : null };
+      recorder.start();
+      statusEl2.textContent = 'Recording…';
+      statusEl2.classList.remove('text-brass-dark');
+      dot.classList.add('recording');
+      btn.innerHTML = '<span class="rec-dot w-2 h-2 rounded-full bg-ink-600"></span> Stop';
+      audioEl2.classList.add('hidden');
+      timerEl.textContent = '0:00';
+      s.timerId = setInterval(() => {
+        timerEl.textContent = formatTime((Date.now() - s.startedAt) / 1000);
+      }, 250);
+    } catch (err) {
+      alert('Could not access your microphone: ' + err.message);
+    }
+  }
+
+  // ---------- Writing module (Task 1 / Task 2, word counter, question + answer PDF) ----------
+  function initWriting() {
+    [taskToggle1, taskToggle2].forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const isTask1 = btn.dataset.task === '1';
+        taskToggle1.classList.toggle('active', isTask1);
+        taskToggle2.classList.toggle('active', !isTask1);
+        task1Panel.classList.toggle('hidden', !isTask1);
+        task2Panel.classList.toggle('hidden', isTask1);
+      });
+    });
+
+    wireWordCounter(task1Answer, task1WordCount, 150);
+    wireWordCounter(task2Answer, task2WordCount, 250);
+
+    writingDownloadBtn.addEventListener('click', downloadWritingPdf);
+  }
+
+  function countWords(text) {
+    const t = (text || '').trim();
+    return t ? t.split(/\s+/).filter(Boolean).length : 0;
+  }
+
+  function wireWordCounter(textarea, counterEl, min) {
+    const update = () => {
+      const n = countWords(textarea.value);
+      counterEl.textContent = `${n} / ${min} words`;
+      counterEl.classList.toggle('word-count-ok', n >= min);
+    };
+    textarea.addEventListener('input', update);
+    update();
+  }
+
+  function downloadWritingPdf() {
+    const bookName = state.bookIndex >= 0 ? state.books[state.bookIndex].name.replace(/\.pdf$/i, '') : 'Untitled Book';
+    const mod = moduleSelect.value || 'Writing';
+    const test = testSelect.value || 'N/A';
+
+    const q1 = task1Question.value.trim();
+    const a1 = task1Answer.value;
+    const q2 = task2Question.value.trim();
+    const a2 = task2Answer.value;
+    const w1 = countWords(a1);
+    const w2 = countWords(a2);
+
+    const nl2br = (s) => escapeHtml(s).replace(/\n/g, '<br>');
+    const taskBlock = (label, min, q, a, w) => `
+      <div style="margin-top:18px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #14161B;padding-bottom:5px;margin-bottom:8px;">
+          <span style="font-size:14px;font-weight:700;">${label}</span>
+          <span style="font-size:11px;font-family:'JetBrains Mono',monospace;color:${w >= min ? '#2f6b3a' : '#9C7A2C'};">${w} / ${min} words</span>
+        </div>
+        ${q ? `<div style="font-size:11px;color:#14161B99;margin-bottom:8px;"><em>${nl2br(q)}</em></div>` : ''}
+        <div style="font-size:12.5px;line-height:1.6;white-space:pre-wrap;">${a && a.trim() ? nl2br(a) : '<span style="color:#14161B66;">(No answer written)</span>'}</div>
+      </div>`;
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'font-family: Inter, sans-serif; padding: 34px; width: 620px; background: #F6F1E7; color: #14161B;';
+    wrap.innerHTML = `
+      <div style="border-bottom:3px solid #14161B;padding-bottom:12px;margin-bottom:6px;">
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#9C7A2C;font-family:'JetBrains Mono',monospace;">IELTS Writing Task Sheet</div>
+        <div style="font-size:22px;font-weight:700;margin-top:6px;font-family:'Space Grotesk',sans-serif;">${escapeHtml(bookName)}</div>
+        <div style="font-size:12px;margin-top:4px;color:#14161B99;font-family:'JetBrains Mono',monospace;">Module: ${escapeHtml(mod)} &nbsp;&middot;&nbsp; Test: ${escapeHtml(test)}</div>
+      </div>
+      ${taskBlock('Task 1', 150, q1, a1, w1)}
+      ${taskBlock('Task 2', 250, q2, a2, w2)}
+      <div style="margin-top:22px;font-size:10px;color:#14161B66;font-family:'JetBrains Mono',monospace;">Generated by IELTS Practice Studio</div>
+    `;
+
+    const root = document.getElementById('pdfExportRoot');
+    root.innerHTML = '';
+    root.appendChild(wrap);
+
+    const filename = `${bookName}-Writing-${test}`.replace(/\s+/g, '_').replace(/[^\w\-]/g, '') + '.pdf';
+
+    html2pdf().set({
+      margin: 0,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, backgroundColor: '#F6F1E7' },
+      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+    }).from(wrap).save().then(() => { root.innerHTML = ''; });
+  }
+
   updateSheetMeta();
-  updateAudioVisibility();
+  updateRightPanel();
+  initSpeaking();
+  initWriting();
 })();
 </script>
 </body>
