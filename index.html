@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IELTS Practice Studio</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: { 900: '#14161B', 800: '#1B1E26', 700: '#242833', 600: '#343A47' },
+          paper: { DEFAULT: '#F6F1E7', line: '#D8CFBA', dim: '#EDE6D6' },
+          brass: { DEFAULT: '#C89B3C', dark: '#9C7A2C', light: '#E4C877' },
+        },
+        fontFamily: {
+          display: ['"Space Grotesk"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+          body: ['Inter', 'sans-serif'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { background: #14161B; font-family: 'Inter', sans-serif; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #343A47; border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #C89B3C; }
+
+  select, .themed-select {
+    -webkit-appearance: none; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23C89B3C'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+
+  .cue-dot { box-shadow: 0 0 0 0 rgba(200,155,60,0.6); }
+  .cue-dot.playing { animation: cuepulse 1.6s ease-out infinite; }
+  @keyframes cuepulse {
+    0%   { box-shadow: 0 0 0 0 rgba(200,155,60,0.55); }
+    70%  { box-shadow: 0 0 0 10px rgba(200,155,60,0); }
+    100% { box-shadow: 0 0 0 0 rgba(200,155,60,0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cue-dot.playing { animation: none; }
+  }
+
+  input[type="range"].seekbar {
+    -webkit-appearance: none; appearance: none;
+    height: 4px; border-radius: 2px; background: #343A47; outline: none;
+  }
+  input[type="range"].seekbar::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 13px; height: 13px; border-radius: 50%;
+    background: #C89B3C; cursor: pointer; border: 2px solid #14161B;
+    margin-top: -4.5px;
+  }
+  input[type="range"].seekbar::-moz-range-thumb {
+    width: 13px; height: 13px; border-radius: 50%;
+    background: #C89B3C; cursor: pointer; border: 2px solid #14161B;
+  }
+  input[type="range"].seekbar::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: transparent; }
+
+  .track-btn.active { background: #C89B3C !important; color: #14161B !important; }
+  .speed-btn.active { background: #C89B3C; color: #14161B; }
+  .answer-input:focus { outline: none; border-color: #C89B3C; background: #FFFDF8; }
+
+  ::placeholder { color: #9A8F72; }
+
+  .ruled-row:nth-child(odd) { background: rgba(216,207,186,0.28); }
+</style>
+</head>
+<body class="h-full text-ink-900">
+
+<div class="h-screen w-screen flex flex-col overflow-hidden">
+
+  <!-- ===================== TASKBAR ===================== -->
+  <header class="shrink-0 bg-ink-800 border-b border-ink-600/60 px-4 py-2.5 flex flex-wrap items-center gap-2.5">
+    <div class="flex items-center gap-2 pr-3 mr-1 border-r border-ink-600/60">
+      <div class="w-2.5 h-2.5 rounded-full bg-brass"></div>
+      <span class="font-display font-700 text-paper tracking-wide text-sm whitespace-nowrap">IELTS PRACTICE STUDIO</span>
+    </div>
+
+    <label class="flex items-center gap-2 bg-ink-700 hover:bg-ink-600 border border-ink-600 text-paper text-xs font-medium px-3 py-2 rounded cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-brass">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>
+      <span id="folderLabel">Select IELTS Folder</span>
+      <input id="folderInput" type="file" webkitdirectory directory multiple class="hidden">
+    </label>
+
+    <button id="gdriveConnectBtn" class="flex items-center gap-2 bg-ink-700 hover:bg-ink-600 border border-ink-600 text-paper text-xs font-medium px-3 py-2 rounded transition-colors focus:ring-2 focus:ring-brass">
+      <svg width="14" height="14" viewBox="0 0 24 24"><path fill="#4285F4" d="M7.71 3.5 1.15 15l3.43 6h6.57l-6.57-12z"/><path fill="#FBBC05" d="M16.29 3.5H7.71l6.57 12h8.57z"/><path fill="#34A853" d="M11.15 21h6.57l3.43-6h-6.86z"/></svg>
+      <span id="gdriveLabel">Connect Google Drive</span>
+    </button>
+    <button id="gdriveSettingsBtn" title="Google Drive credentials" type="button" class="text-paper/50 hover:text-brass px-1.5 py-2 rounded transition-colors">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+
+    <select id="bookSelect" class="text-xs font-medium bg-ink-700 border border-ink-600 text-paper rounded px-3 py-2 min-w-[170px] max-w-[220px] focus:ring-2 focus:ring-brass">
+      <option value="">Book / Test (.pdf)</option>
+    </select>
+
+    <select id="audioSelect" class="text-xs font-medium bg-ink-700 border border-ink-600 text-paper rounded px-3 py-2 min-w-[160px] max-w-[210px] focus:ring-2 focus:ring-brass">
+      <option value="">Audio override (.mp3/.wav)</option>
+    </select>
+
+    <select id="moduleSelect" class="text-xs font-medium bg-ink-700 border border-ink-600 text-paper rounded px-3 py-2 focus:ring-2 focus:ring-brass">
+      <option value="">Module</option>
+      <option>Listening</option>
+      <option>Reading</option>
+      <option>Writing</option>
+      <option>Speaking</option>
+    </select>
+
+    <select id="testSelect" class="text-xs font-medium bg-ink-700 border border-ink-600 text-paper rounded px-3 py-2 focus:ring-2 focus:ring-brass">
+      <option value="">Test</option>
+      <option>Test 1</option>
+      <option>Test 2</option>
+      <option>Test 3</option>
+      <option>Test 4</option>
+    </select>
+
+    <span id="statusEl" class="text-[11px] text-paper/50 font-mono ml-auto whitespace-nowrap"></span>
+  </header>
+
+  <!-- ===================== MAIN SPLIT ===================== -->
+  <main class="flex-1 flex min-h-0">
+
+    <!-- LEFT: PDF VIEWER 55% -->
+    <section class="basis-[55%] shrink-0 grow-0 min-w-0 bg-ink-900 flex flex-col border-r border-ink-600/60">
+      <div class="shrink-0 flex items-center justify-between px-4 py-2 bg-ink-800 border-b border-ink-600/60">
+        <span class="text-[11px] uppercase tracking-[0.15em] text-brass font-mono">Reading Pane</span>
+        <span id="currentBookLabel" class="text-xs text-paper/70 font-mono truncate max-w-[60%]">No book loaded</span>
+      </div>
+      <div class="flex-1 min-h-0 bg-[#3a3d44]">
+        <iframe id="pdfFrame" class="w-full h-full bg-[#3a3d44]" title="PDF viewer"></iframe>
+        <div id="pdfEmptyState" class="h-full w-full flex flex-col items-center justify-center text-center px-8 -mt-full">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" stroke-width="1.5" class="mb-3 opacity-70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          <p class="text-paper/60 text-sm font-body max-w-xs">Select your IELTS folder, then choose a book from the dropdown. The matching audio track cues automatically.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: AUDIO + ANSWER SHEET 45% -->
+    <section class="basis-[45%] grow min-w-0 flex flex-col min-h-0 bg-ink-900">
+
+      <!-- AUDIO PLAYER (Listening module only) -->
+      <div id="audioSection" class="shrink-0 bg-ink-800 border-b border-ink-600/60 px-4 py-3 hidden">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[11px] uppercase tracking-[0.15em] text-brass font-mono">Audio Deck</span>
+          <div class="flex items-center gap-2">
+            <span id="audioMatchNote" class="text-[11px] text-brass-light/80 font-mono"></span>
+            <span id="cueDot" class="cue-dot w-2 h-2 rounded-full bg-brass"></span>
+          </div>
+        </div>
+
+        <div id="currentTrackLabel" class="text-sm text-paper font-medium truncate mb-2">No track cued</div>
+
+        <div class="flex items-center gap-2 mb-2">
+          <span id="curTime" class="text-[11px] font-mono text-paper/60 w-10 text-right">0:00</span>
+          <input id="seekBar" type="range" class="seekbar flex-1" min="0" max="100" value="0" step="0.1">
+          <span id="durTime" class="text-[11px] font-mono text-paper/60 w-10">0:00</span>
+        </div>
+
+        <div class="flex items-center justify-center gap-1.5 mb-2.5">
+          <button data-seek="-10" class="seek-btn text-[11px] font-mono px-2.5 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-paper border border-ink-600">-10s</button>
+          <button data-seek="-5" class="seek-btn text-[11px] font-mono px-2.5 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-paper border border-ink-600">-5s</button>
+          <button id="playPauseBtn" class="mx-1.5 w-10 h-10 rounded-full bg-brass hover:bg-brass-light flex items-center justify-center transition-colors">
+            <svg id="playIcon" width="14" height="14" viewBox="0 0 24 24" fill="#14161B"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="pauseIcon" width="14" height="14" viewBox="0 0 24 24" fill="#14161B" class="hidden"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+          </button>
+          <button data-seek="5" class="seek-btn text-[11px] font-mono px-2.5 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-paper border border-ink-600">+5s</button>
+          <button data-seek="10" class="seek-btn text-[11px] font-mono px-2.5 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-paper border border-ink-600">+10s</button>
+        </div>
+
+        <div class="flex items-center justify-center gap-1.5 mb-3">
+          <span class="text-[10px] font-mono text-paper/40 mr-1">SPEED</span>
+          <button data-speed="0.8" class="speed-btn text-[11px] font-mono px-2.5 py-1 rounded bg-ink-700 hover:bg-ink-600 text-paper/80 border border-ink-600">0.8x</button>
+          <button data-speed="1.0" class="speed-btn active text-[11px] font-mono px-2.5 py-1 rounded bg-ink-700 hover:bg-ink-600 text-paper/80 border border-ink-600">1.0x</button>
+          <button data-speed="1.1" class="speed-btn text-[11px] font-mono px-2.5 py-1 rounded bg-ink-700 hover:bg-ink-600 text-paper/80 border border-ink-600">1.1x</button>
+          <button data-speed="1.2" class="speed-btn text-[11px] font-mono px-2.5 py-1 rounded bg-ink-700 hover:bg-ink-600 text-paper/80 border border-ink-600">1.2x</button>
+        </div>
+
+        <div id="trackGrid" class="grid grid-cols-2 gap-1.5 max-h-24 overflow-y-auto pr-1">
+          <div class="col-span-2 text-center text-[11px] text-paper/30 font-mono py-2">No audio tracks detected yet</div>
+        </div>
+
+        <audio id="audioEl" class="hidden" preload="metadata"></audio>
+      </div>
+
+      <div id="audioHiddenNote" class="shrink-0 bg-ink-800 border-b border-ink-600/60 px-4 py-3 flex items-center gap-2">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#C89B3C" stroke-width="2"><path d="M11 5 6 9H2v6h4l5 4z"/><path d="M22 9l-6 6M16 9l6 6"/></svg>
+        <span class="text-[11px] text-paper/50 font-mono">Audio deck is only shown for the Listening module — select it above to reveal playback controls.</span>
+      </div>
+
+      <!-- ANSWER SHEET -->
+      <div class="flex-1 min-h-0 flex flex-col p-3">
+        <div class="bg-paper rounded-sm shadow-[0_1px_0_#00000033,0_8px_20px_-8px_#00000066] flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div class="shrink-0 border-b-[3px] border-ink-900 px-4 pt-3 pb-2.5 flex items-start justify-between">
+            <div>
+              <div class="text-[10px] uppercase tracking-[0.2em] text-brass-dark font-mono">Candidate Answer Sheet</div>
+              <div id="sheetBookLabel" class="font-display font-700 text-ink-900 text-base leading-tight mt-0.5">No book selected</div>
+              <div id="sheetMetaLabel" class="text-[11px] text-ink-900/50 font-mono mt-0.5">Module: — &nbsp;·&nbsp; Test: —</div>
+            </div>
+            <div class="flex flex-col gap-1.5 shrink-0">
+              <button id="clearBtn" class="text-[11px] font-mono px-2.5 py-1.5 rounded border border-ink-900/20 text-ink-900/70 hover:bg-ink-900/5">Clear</button>
+              <button id="downloadBtn" class="text-[11px] font-mono px-2.5 py-1.5 rounded bg-ink-900 text-paper hover:bg-ink-800">Download PDF</button>
+            </div>
+          </div>
+          <div class="flex-1 min-h-0 overflow-y-auto px-4 py-2">
+            <div class="grid grid-cols-2 gap-x-4">
+              <div id="answerCol1"></div>
+              <div id="answerCol2"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- Google Drive credentials modal -->
+<div id="gdriveModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-ink-800 border border-ink-600 rounded-lg max-w-md w-full p-5">
+    <h2 class="font-display text-paper text-base font-700 mb-1">Connect Google Drive</h2>
+    <p class="text-paper/60 text-xs font-body mb-4 leading-relaxed">Paste the OAuth Client ID and API key from your own Google Cloud project. These are stored only in this browser (localStorage) — never sent anywhere by this app except directly to Google.</p>
+    <label class="block text-[11px] text-paper/70 font-mono mb-1">OAuth Client ID</label>
+    <input id="gdriveClientId" type="text" placeholder="xxxxxxxx.apps.googleusercontent.com" class="w-full mb-3 bg-ink-700 border border-ink-600 rounded px-2.5 py-2 text-xs text-paper font-mono focus:ring-2 focus:ring-brass outline-none">
+    <label class="block text-[11px] text-paper/70 font-mono mb-1">API Key</label>
+    <input id="gdriveApiKey" type="text" placeholder="AIza..." class="w-full mb-4 bg-ink-700 border border-ink-600 rounded px-2.5 py-2 text-xs text-paper font-mono focus:ring-2 focus:ring-brass outline-none">
+    <div class="flex items-center justify-between gap-2">
+      <span class="text-[10px] text-paper/40 font-mono">Setup steps are below the app.</span>
+      <div class="flex items-center gap-2">
+        <button id="gdriveModalCancel" type="button" class="text-xs font-mono px-3 py-1.5 rounded border border-ink-600 text-paper/70 hover:bg-ink-700">Cancel</button>
+        <button id="gdriveModalSave" type="button" class="text-xs font-mono px-3 py-1.5 rounded bg-brass text-ink-900 hover:bg-brass-light">Save &amp; Connect</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden template used only when exporting the answer PDF -->
+<div id="pdfExportRoot" class="hidden"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- State ----------
+  const state = {
+    // local item shape: {name, path, file, url, source:'local'}
+    // drive item shape: {name, path, driveId, mimeType, url, source:'drive'}
+    books: [],
+    audios: [],
+    bookIndex: -1,
+    audioIndex: -1,
+    speed: 1.0,
+  };
+
+  // ---------- DOM refs ----------
+  const folderInput   = document.getElementById('folderInput');
+  const folderLabel   = document.getElementById('folderLabel');
+  const bookSelect    = document.getElementById('bookSelect');
+  const audioSelect   = document.getElementById('audioSelect');
+  const moduleSelect  = document.getElementById('moduleSelect');
+  const testSelect    = document.getElementById('testSelect');
+  const statusEl      = document.getElementById('statusEl');
+
+  const gdriveConnectBtn   = document.getElementById('gdriveConnectBtn');
+  const gdriveLabel        = document.getElementById('gdriveLabel');
+  const gdriveSettingsBtn  = document.getElementById('gdriveSettingsBtn');
+  const gdriveModal        = document.getElementById('gdriveModal');
+  const gdriveClientIdInput = document.getElementById('gdriveClientId');
+  const gdriveApiKeyInput   = document.getElementById('gdriveApiKey');
+  const gdriveModalCancel  = document.getElementById('gdriveModalCancel');
+  const gdriveModalSave    = document.getElementById('gdriveModalSave');
+
+  const pdfFrame       = document.getElementById('pdfFrame');
+  const pdfEmptyState  = document.getElementById('pdfEmptyState');
+  const currentBookLabel = document.getElementById('currentBookLabel');
+
+  const audioSection      = document.getElementById('audioSection');
+  const audioHiddenNote   = document.getElementById('audioHiddenNote');
+  const audioMatchNote   = document.getElementById('audioMatchNote');
+  const cueDot            = document.getElementById('cueDot');
+  const currentTrackLabel = document.getElementById('currentTrackLabel');
+  const audioEl           = document.getElementById('audioEl');
+  const seekBar            = document.getElementById('seekBar');
+  const curTimeEl          = document.getElementById('curTime');
+  const durTimeEl          = document.getElementById('durTime');
+  const playPauseBtn       = document.getElementById('playPauseBtn');
+  const playIcon           = document.getElementById('playIcon');
+  const pauseIcon          = document.getElementById('pauseIcon');
+  const trackGrid          = document.getElementById('trackGrid');
+
+  const sheetBookLabel = document.getElementById('sheetBookLabel');
+  const sheetMetaLabel = document.getElementById('sheetMetaLabel');
+  const answerCol1     = document.getElementById('answerCol1');
+  const answerCol2     = document.getElementById('answerCol2');
+  const clearBtn       = document.getElementById('clearBtn');
+  const downloadBtn    = document.getElementById('downloadBtn');
+
+  // ---------- Helpers ----------
+  function extOf(name) {
+    const m = /\.([a-z0-9]+)$/i.exec(name || '');
+    return m ? m[1].toLowerCase() : '';
+  }
+  function normalize(name) {
+    return (name || '')
+      .toLowerCase()
+      .replace(/\.(pdf|mp3|wav)$/i, '')
+      .replace(/[^a-z0-9]/g, '');
+  }
+  function dirOf(path) {
+    const parts = (path || '').split('/');
+    parts.pop();
+    return parts.join('/');
+  }
+  function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+  function formatTime(sec) {
+    if (!isFinite(sec) || sec < 0) sec = 0;
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return m + ':' + String(s).padStart(2, '0');
+  }
+  // Async so it can transparently cover both a synchronous local Blob URL
+  // and an on-demand download from Google Drive (see Drive section below).
+  async function getObjectUrl(item) {
+    if (item.url) return item.url;
+    if (item.source === 'drive') {
+      const res = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${item.driveId}?alt=media&key=${encodeURIComponent(gdrive.apiKey)}`,
+        { headers: { Authorization: 'Bearer ' + gdrive.accessToken } }
+      );
+      if (!res.ok) {
+        if (res.status === 401) throw new Error('Your Google Drive session expired — click Connect Google Drive again.');
+        throw new Error('Drive download failed (HTTP ' + res.status + ').');
+      }
+      const blob = await res.blob();
+      item.url = URL.createObjectURL(blob);
+      return item.url;
+    }
+    item.url = URL.createObjectURL(item.file);
+    return item.url;
+  }
+  function revokeAll(list) {
+    (list || []).forEach((item) => { if (item.url) URL.revokeObjectURL(item.url); });
+  }
+
+  // ---------- Folder ingestion (strict extension filtering) ----------
+  folderInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    revokeAll(state.books);
+    revokeAll(state.audios);
+
+    const books = [];
+    const audios = [];
+    for (const f of files) {
+      const ext = extOf(f.name);
+      const path = f.webkitRelativePath || f.name;
+      if (ext === 'pdf') {
+        books.push({ name: f.name, path, file: f, source: 'local' });
+      } else if (ext === 'mp3' || ext === 'wav') {
+        audios.push({ name: f.name, path, file: f, source: 'local' });
+      }
+      // every other extension (.m4a, .ogg, .txt, etc.) is silently ignored
+    }
+    books.sort((a, b) => a.path.localeCompare(b.path));
+    audios.sort((a, b) => a.path.localeCompare(b.path));
+
+    state.books = books;
+    state.audios = audios;
+    state.bookIndex = -1;
+    state.audioIndex = -1;
+
+    const topFolder = (files[0].webkitRelativePath || '').split('/')[0] || 'folder';
+    folderLabel.textContent = topFolder;
+    gdriveLabel.textContent = 'Connect Google Drive';
+    statusEl.textContent = `${books.length} PDF book(s) · ${audios.length} audio track(s) detected`;
+
+    populateBookSelect();
+    populateAudioSelect();
+    renderTrackGrid();
+
+    if (books.length) {
+      loadBook(0, true);
+    } else {
+      audioMatchNote.textContent = 'No PDF books found in this folder.';
+    }
+  });
+
+  // ---------- Google Drive integration ----------
+  // Uses Google Identity Services (OAuth token client) + Google Picker to let
+  // the user pick a Drive folder, then the Drive REST API to list it
+  // recursively and download individual files on demand as Blobs — after
+  // that, everything downstream (matching, playback, dropdowns) is identical
+  // to the local-folder path.
+  const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
+  const gdrive = {
+    clientId: localStorage.getItem('ielts_gdrive_client_id') || '',
+    apiKey: localStorage.getItem('ielts_gdrive_api_key') || '',
+    accessToken: null,
+    tokenClient: null,
+  };
+  gdriveClientIdInput.value = gdrive.clientId;
+  gdriveApiKeyInput.value = gdrive.apiKey;
+
+  function openGdriveModal() { gdriveModal.classList.remove('hidden'); }
+  function closeGdriveModal() { gdriveModal.classList.add('hidden'); }
+
+  gdriveSettingsBtn.addEventListener('click', openGdriveModal);
+  gdriveModalCancel.addEventListener('click', closeGdriveModal);
+  gdriveModal.addEventListener('click', (e) => { if (e.target === gdriveModal) closeGdriveModal(); });
+
+  gdriveModalSave.addEventListener('click', () => {
+    gdrive.clientId = gdriveClientIdInput.value.trim();
+    gdrive.apiKey = gdriveApiKeyInput.value.trim();
+    localStorage.setItem('ielts_gdrive_client_id', gdrive.clientId);
+    localStorage.setItem('ielts_gdrive_api_key', gdrive.apiKey);
+    gdrive.tokenClient = null; // rebuild with the new client id
+    closeGdriveModal();
+    if (gdrive.clientId && gdrive.apiKey) connectGoogleDrive();
+  });
+
+  gdriveConnectBtn.addEventListener('click', () => {
+    if (!gdrive.clientId || !gdrive.apiKey) { openGdriveModal(); return; }
+    connectGoogleDrive();
+  });
+
+  function connectGoogleDrive() {
+    if (!window.google || !google.accounts || !google.accounts.oauth2) {
+      alert('The Google sign-in script has not loaded yet — check your internet connection and try again in a moment.');
+      return;
+    }
+    if (!gdrive.tokenClient) {
+      gdrive.tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: gdrive.clientId,
+        scope: DRIVE_SCOPE,
+        callback: (resp) => {
+          if (resp.error) {
+            alert('Google Drive authorization failed: ' + resp.error + '\n\nDouble check your Client ID and that this page\'s URL is added as an Authorized JavaScript origin in Google Cloud Console.');
+            return;
+          }
+          gdrive.accessToken = resp.access_token;
+          gdriveLabel.textContent = 'Pick a Drive folder…';
+          openDrivePicker();
+        },
+      });
+    }
+    gdrive.tokenClient.requestAccessToken({ prompt: gdrive.accessToken ? '' : 'consent' });
+  }
+
+  function openDrivePicker() {
+    if (!window.gapi) {
+      alert('The Google API script has not loaded yet — check your internet connection and try again.');
+      return;
+    }
+    gapi.load('picker', () => {
+      const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setSelectFolderEnabled(true)
+        .setIncludeFolders(true);
+      const picker = new google.picker.PickerBuilder()
+        .addView(view)
+        .setOAuthToken(gdrive.accessToken)
+        .setDeveloperKey(gdrive.apiKey)
+        .setTitle('Select your IELTS folder')
+        .setCallback(onDrivePicked)
+        .build();
+      picker.setVisible(true);
+    });
+  }
+
+  function onDrivePicked(data) {
+    if (data.action !== google.picker.Action.PICKED) return;
+    const folder = data.docs[0];
+    gdriveLabel.textContent = folder.name + ' (Drive)';
+    ingestDriveFolder(folder.id, folder.name);
+  }
+
+  async function driveListChildren(folderId) {
+    let files = [];
+    let pageToken = '';
+    do {
+      const params = new URLSearchParams({
+        q: `'${folderId}' in parents and trashed = false`,
+        fields: 'nextPageToken, files(id, name, mimeType)',
+        pageSize: '1000',
+        key: gdrive.apiKey,
+      });
+      if (pageToken) params.set('pageToken', pageToken);
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?${params.toString()}`, {
+        headers: { Authorization: 'Bearer ' + gdrive.accessToken },
+      });
+      if (!res.ok) throw new Error('Drive listing failed (HTTP ' + res.status + ').');
+      const json = await res.json();
+      files = files.concat(json.files || []);
+      pageToken = json.nextPageToken || '';
+    } while (pageToken);
+    return files;
+  }
+
+  async function ingestDriveFolder(rootId, rootName) {
+    statusEl.textContent = 'Scanning Drive folder…';
+    const books = [];
+    const audios = [];
+
+    async function walk(folderId, pathPrefix) {
+      const children = await driveListChildren(folderId);
+      for (const item of children) {
+        const path = pathPrefix + '/' + item.name;
+        if (item.mimeType === 'application/vnd.google-apps.folder') {
+          await walk(item.id, path);
+          continue;
+        }
+        const ext = extOf(item.name);
+        if (ext === 'pdf') {
+          books.push({ name: item.name, path, driveId: item.id, mimeType: item.mimeType, source: 'drive' });
+        } else if (ext === 'mp3' || ext === 'wav') {
+          audios.push({ name: item.name, path, driveId: item.id, mimeType: item.mimeType, source: 'drive' });
+        }
+        // every other extension is ignored, same as the local folder path
+      }
+    }
+
+    try {
+      await walk(rootId, rootName);
+    } catch (err) {
+      alert('Could not read that Drive folder:\n' + err.message);
+      statusEl.textContent = 'Google Drive scan failed';
+      return;
+    }
+
+    revokeAll(state.books);
+    revokeAll(state.audios);
+
+    books.sort((a, b) => a.path.localeCompare(b.path));
+    audios.sort((a, b) => a.path.localeCompare(b.path));
+
+    state.books = books;
+    state.audios = audios;
+    state.bookIndex = -1;
+    state.audioIndex = -1;
+
+    folderLabel.textContent = 'Select IELTS Folder';
+    statusEl.textContent = `${books.length} PDF book(s) · ${audios.length} audio track(s) detected on Drive`;
+
+    populateBookSelect();
+    populateAudioSelect();
+    renderTrackGrid();
+
+    if (books.length) {
+      loadBook(0, true);
+    } else {
+      audioMatchNote.textContent = 'No PDF books found in that Drive folder.';
+    }
+  }
+
+  // ---------- Module/Test soft filter for the Book dropdown ----------
+  function getFilteredBookIndices() {
+    const modVal = moduleSelect.value.toLowerCase();
+    const testVal = testSelect.value;
+    const testNum = testVal ? (testVal.match(/\d+/) || [])[0] : '';
+    if (!modVal && !testNum) return state.books.map((_, i) => i);
+
+    const filtered = [];
+    state.books.forEach((b, i) => {
+      const n = b.name.toLowerCase();
+      const modOk = !modVal || n.includes(modVal);
+      const testOk = !testNum || new RegExp('t(est)?\\s*0*' + testNum + '\\b').test(n);
+      if (modOk && testOk) filtered.push(i);
+    });
+    return filtered.length ? filtered : state.books.map((_, i) => i);
+  }
+
+  function populateBookSelect() {
+    const indices = getFilteredBookIndices();
+    const filteredOut = indices.length < state.books.length;
+    bookSelect.innerHTML = '<option value="">Book / Test (.pdf)</option>' +
+      indices.map((i) => {
+        const b = state.books[i];
+        const label = b.path.includes('/') ? b.path : b.name;
+        const tag = b.source === 'drive' ? '  ☁' : '';
+        return `<option value="${i}">${escapeHtml(label)}${tag}</option>`;
+      }).join('');
+    if (state.bookIndex >= 0 && indices.includes(state.bookIndex)) {
+      bookSelect.value = String(state.bookIndex);
+    }
+    statusEl.textContent = filteredOut && (moduleSelect.value || testSelect.value)
+      ? `Showing ${indices.length} of ${state.books.length} book(s) matching filter`
+      : `${state.books.length} PDF book(s) · ${state.audios.length} audio track(s) detected`;
+  }
+
+  function populateAudioSelect() {
+    audioSelect.innerHTML = '<option value="">Audio override (.mp3/.wav)</option>' +
+      state.audios.map((a, i) => {
+        const label = a.path.includes('/') ? a.path : a.name;
+        const tag = a.source === 'drive' ? '  ☁' : '';
+        return `<option value="${i}">${escapeHtml(label)}${tag}</option>`;
+      }).join('');
+    if (state.audioIndex >= 0) audioSelect.value = String(state.audioIndex);
+  }
+
+  function renderTrackGrid() {
+    if (!state.audios.length) {
+      trackGrid.innerHTML = '<div class="col-span-2 text-center text-[11px] text-paper/30 font-mono py-2">No audio tracks detected yet</div>';
+      return;
+    }
+    trackGrid.innerHTML = state.audios.map((a, i) => {
+      const short = a.name.replace(/\.(mp3|wav)$/i, '');
+      const tag = a.source === 'drive' ? ' ☁' : '';
+      return `<button data-track="${i}" class="track-btn text-left text-[11px] font-mono px-2 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-paper/80 border border-ink-600 truncate ${i === state.audioIndex ? 'active' : ''}" title="${escapeHtml(a.path)}">${escapeHtml(short)}${tag}</button>`;
+    }).join('');
+  }
+
+  // ---------- Matching: primary PDF <-> matching audio ----------
+  function findMatchingAudio(book) {
+    if (!state.audios.length) return -1;
+    const bn = normalize(book.name);
+    const bdir = dirOf(book.path);
+
+    // 1. exact normalized filename match
+    let idx = state.audios.findIndex((a) => normalize(a.name) === bn);
+    if (idx !== -1) return idx;
+
+    // 2. same-folder candidates
+    const sameDir = state.audios
+      .map((a, i) => ({ a, i }))
+      .filter((x) => dirOf(x.a.path) === bdir);
+    if (sameDir.length === 1) return sameDir[0].i;
+    if (sameDir.length > 1) {
+      let best = -1, bestScore = -1;
+      sameDir.forEach((x) => {
+        const an = normalize(x.a.name);
+        let score = 0;
+        if (an.includes(bn) || bn.includes(an)) score = Math.min(an.length, bn.length);
+        if (score > bestScore) { bestScore = score; best = x.i; }
+      });
+      return best !== -1 ? best : sameDir[0].i;
+    }
+
+    // 3. best substring match anywhere in the folder tree
+    let best = -1, bestScore = 0;
+    state.audios.forEach((a, i) => {
+      const an = normalize(a.name);
+      if (an.includes(bn) || bn.includes(an)) {
+        const score = Math.min(an.length, bn.length);
+        if (score > bestScore) { bestScore = score; best = i; }
+      }
+    });
+    if (best !== -1) return best;
+
+    // 4. only one audio track exists in the whole set — assume it's the one
+    if (state.audios.length === 1) return 0;
+    return -1;
+  }
+
+  // ---------- Loading ----------
+  async function loadBook(index, autoLoadAudio) {
+    const book = state.books[index];
+    if (!book) return;
+    state.bookIndex = index;
+
+    pdfEmptyState.classList.add('hidden');
+    currentBookLabel.textContent = book.source === 'drive' ? 'Downloading from Drive…' : book.name;
+    bookSelect.value = String(index);
+
+    try {
+      pdfFrame.src = await getObjectUrl(book);
+      currentBookLabel.textContent = book.name;
+    } catch (err) {
+      currentBookLabel.textContent = 'Failed to load';
+      alert(err.message);
+      return;
+    }
+
+    const cleanName = book.name.replace(/\.pdf$/i, '');
+    sheetBookLabel.textContent = cleanName;
+    updateSheetMeta();
+
+    if (autoLoadAudio) {
+      const aIdx = findMatchingAudio(book);
+      if (aIdx !== -1) {
+        loadAudio(aIdx);
+        audioMatchNote.textContent = '';
+      } else {
+        audioMatchNote.textContent = 'No matching track — pick audio manually';
+      }
+    }
+  }
+
+  async function loadAudio(index) {
+    const track = state.audios[index];
+    if (!track) return;
+    state.audioIndex = index;
+
+    audioEl.pause();
+    audioSelect.value = String(index);
+    currentTrackLabel.textContent = track.source === 'drive' ? 'Downloading from Drive…' : track.name;
+    seekBar.value = 0;
+    curTimeEl.textContent = '0:00';
+    durTimeEl.textContent = '0:00';
+    setPlayingUI(false);
+    renderTrackGrid();
+
+    try {
+      audioEl.src = await getObjectUrl(track);
+      audioEl.playbackRate = state.speed;
+      currentTrackLabel.textContent = track.name;
+    } catch (err) {
+      currentTrackLabel.textContent = 'Failed to load';
+      alert(err.message);
+    }
+  }
+
+  bookSelect.addEventListener('change', () => {
+    if (bookSelect.value === '') return;
+    loadBook(parseInt(bookSelect.value, 10), true);
+  });
+
+  audioSelect.addEventListener('change', () => {
+    if (audioSelect.value === '') return;
+    // Independent override — never touches the currently loaded PDF
+    loadAudio(parseInt(audioSelect.value, 10));
+  });
+
+  trackGrid.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-track]');
+    if (!btn) return;
+    loadAudio(parseInt(btn.dataset.track, 10));
+  });
+
+  moduleSelect.addEventListener('change', () => { populateBookSelect(); updateSheetMeta(); updateAudioVisibility(); });
+  testSelect.addEventListener('change', () => { populateBookSelect(); updateSheetMeta(); });
+
+  function updateAudioVisibility() {
+    const show = moduleSelect.value === 'Listening';
+    audioSection.classList.toggle('hidden', !show);
+    audioHiddenNote.classList.toggle('hidden', show);
+  }
+
+  function updateSheetMeta() {
+    const mod = moduleSelect.value || '—';
+    const test = testSelect.value || '—';
+    sheetMetaLabel.textContent = `Module: ${mod}  ·  Test: ${test}`;
+  }
+
+  // ---------- Audio controls ----------
+  function setPlayingUI(playing) {
+    playIcon.classList.toggle('hidden', playing);
+    pauseIcon.classList.toggle('hidden', !playing);
+    cueDot.classList.toggle('playing', playing);
+  }
+
+  playPauseBtn.addEventListener('click', () => {
+    if (!audioEl.src) return;
+    if (audioEl.paused) audioEl.play().catch(() => {});
+    else audioEl.pause();
+  });
+  audioEl.addEventListener('play', () => setPlayingUI(true));
+  audioEl.addEventListener('pause', () => setPlayingUI(false));
+  audioEl.addEventListener('ended', () => setPlayingUI(false));
+
+  audioEl.addEventListener('loadedmetadata', () => {
+    durTimeEl.textContent = formatTime(audioEl.duration);
+  });
+  audioEl.addEventListener('timeupdate', () => {
+    if (audioEl.duration) {
+      seekBar.value = (audioEl.currentTime / audioEl.duration) * 100;
+    }
+    curTimeEl.textContent = formatTime(audioEl.currentTime);
+  });
+  seekBar.addEventListener('input', () => {
+    if (!audioEl.duration) return;
+    audioEl.currentTime = (parseFloat(seekBar.value) / 100) * audioEl.duration;
+  });
+
+  document.querySelectorAll('.seek-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!audioEl.src) return;
+      const delta = parseFloat(btn.dataset.seek);
+      const dur = isFinite(audioEl.duration) ? audioEl.duration : Infinity;
+      audioEl.currentTime = Math.min(Math.max(0, audioEl.currentTime + delta), dur);
+    });
+  });
+
+  document.querySelectorAll('.speed-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const rate = parseFloat(btn.dataset.speed);
+      state.speed = rate;
+      audioEl.playbackRate = rate;
+      document.querySelectorAll('.speed-btn').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  // ---------- Answer sheet (1-40, two ruled columns) ----------
+  function buildAnswerSheet() {
+    let col1 = '', col2 = '';
+    for (let i = 1; i <= 40; i++) {
+      const row = `
+        <div class="ruled-row flex items-center gap-2 py-1 px-1.5">
+          <span class="font-mono text-[11px] text-ink-900/50 w-5 shrink-0">${i}.</span>
+          <input id="ans-${i}" type="text" autocomplete="off"
+            class="answer-input w-full bg-transparent border-b border-paper-line text-sm font-mono text-ink-900 py-0.5 px-1"
+            placeholder="">
+        </div>`;
+      if (i <= 20) col1 += row; else col2 += row;
+    }
+    answerCol1.innerHTML = col1;
+    answerCol2.innerHTML = col2;
+  }
+  buildAnswerSheet();
+
+  clearBtn.addEventListener('click', () => {
+    if (!confirm('Clear all 40 answers?')) return;
+    for (let i = 1; i <= 40; i++) {
+      const input = document.getElementById('ans-' + i);
+      if (input) input.value = '';
+    }
+  });
+
+  downloadBtn.addEventListener('click', () => {
+    const bookName = state.bookIndex >= 0 ? state.books[state.bookIndex].name.replace(/\.pdf$/i, '') : 'Untitled Book';
+    const mod = moduleSelect.value || 'N/A';
+    const test = testSelect.value || 'N/A';
+
+    let rows1 = '', rows2 = '';
+    for (let i = 1; i <= 40; i++) {
+      const val = document.getElementById('ans-' + i)?.value || '';
+      const row = `<div style="display:flex;justify-content:space-between;border-bottom:1px solid #D8CFBA;padding:5px 6px;font-size:12px;">
+          <span style="color:#9C7A2C;font-weight:600;">${i}.</span>
+          <span style="flex:1;text-align:left;margin-left:10px;">${escapeHtml(val)}</span>
+        </div>`;
+      if (i <= 20) rows1 += row; else rows2 += row;
+    }
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'font-family: "JetBrains Mono", monospace; padding: 34px; width: 620px; background: #F6F1E7; color: #14161B;';
+    wrap.innerHTML = `
+      <div style="border-bottom:3px solid #14161B;padding-bottom:12px;margin-bottom:18px;">
+        <div style="font-size:10px;letter-spacing:3px;text-transform:uppercase;color:#9C7A2C;">Candidate Answer Sheet</div>
+        <div style="font-size:22px;font-weight:700;margin-top:6px;">${escapeHtml(bookName)}</div>
+        <div style="font-size:12px;margin-top:4px;color:#14161B99;">Module: ${escapeHtml(mod)} &nbsp;&middot;&nbsp; Test: ${escapeHtml(test)}</div>
+      </div>
+      <div style="display:flex;gap:20px;">
+        <div style="flex:1;">${rows1}</div>
+        <div style="flex:1;">${rows2}</div>
+      </div>
+      <div style="margin-top:20px;font-size:10px;color:#14161B66;">Generated by IELTS Practice Studio</div>
+    `;
+
+    const root = document.getElementById('pdfExportRoot');
+    root.innerHTML = '';
+    root.appendChild(wrap);
+
+    const filename = `${bookName}-${mod}-${test}-answers`.replace(/\s+/g, '_').replace(/[^\w\-]/g, '') + '.pdf';
+
+    html2pdf().set({
+      margin: 0,
+      filename,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, backgroundColor: '#F6F1E7' },
+      jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' },
+    }).from(wrap).save().then(() => { root.innerHTML = ''; });
+  });
+
+  updateSheetMeta();
+  updateAudioVisibility();
+})();
+</script>
+</body>
+</html>
